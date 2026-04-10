@@ -57,15 +57,29 @@ if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
     --argjson max "$MAX_TOKENS" \
     --arg p "$prompt" \
     '{model:$model, max_tokens:$max, messages:[{role:"user",content:$p}]}')
-  response=$(curl -sS https://api.anthropic.com/v1/messages \
+  # -f makes curl exit non-zero on HTTP >= 400, surfacing API errors
+  # instead of silently swallowing them. -sS keeps it quiet on success
+  # while still printing error messages to stderr.
+  response=$(curl -sSf https://api.anthropic.com/v1/messages \
     -H "x-api-key: $ANTHROPIC_API_KEY" \
     -H "anthropic-version: 2023-06-01" \
     -H "content-type: application/json" \
     -d "$payload") || {
-      printf 'llm-client: curl failed\n' >&2
+      printf 'llm-client: anthropic API call failed (curl exit %d)\n' "$?" >&2
       exit 2
     }
-  printf '%s' "$response" | jq -r '.content[0].text // empty'
+  # Check for an explicit error envelope even on 2xx (defensive)
+  if printf '%s' "$response" | jq -e '.error' >/dev/null 2>&1; then
+    err=$(printf '%s' "$response" | jq -r '.error.message // "unknown error"')
+    printf 'llm-client: anthropic API returned error: %s\n' "$err" >&2
+    exit 2
+  fi
+  text=$(printf '%s' "$response" | jq -r '.content[0].text // empty')
+  if [ -z "$text" ]; then
+    printf 'llm-client: anthropic API returned empty content\n' >&2
+    exit 2
+  fi
+  printf '%s' "$text"
   exit 0
 fi
 
