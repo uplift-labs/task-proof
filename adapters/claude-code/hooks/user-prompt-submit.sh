@@ -9,11 +9,12 @@ ROOT="$(cd "$HOOK_DIR/../.." && pwd)"
 INPUT=$(cat)
 RESULT=$(printf '%s' "$INPUT" | bash "$ROOT/core/cmd/task-proof-run.sh" prompt-recommend 2>/dev/null) || true
 
+# JSON-safe escape — see pre-bash.sh for the rationale on the C0 strip.
 _tp_escape() {
   local s="$1"
   s=${s//\\/\\\\}
   s=${s//\"/\\\"}
-  s=${s//$'\n'/ }
+  s=$(printf '%s' "$s" | LC_ALL=C tr '\000-\037' ' ')
   printf '%s' "$s"
 }
 

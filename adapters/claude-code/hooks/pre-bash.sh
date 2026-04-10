@@ -9,12 +9,16 @@ ROOT="$(cd "$HOOK_DIR/../.." && pwd)"
 INPUT=$(cat)
 RESULT=$(printf '%s' "$INPUT" | bash "$ROOT/core/cmd/task-proof-run.sh" pre-commit 2>/dev/null) || true
 
-# Pure-bash JSON escape — handles backslash, double-quote, newline
+# JSON-safe escape — handles backslash, double-quote, and every C0 control
+# character (0x00-0x1F). RFC 8259 forbids raw control chars inside string
+# literals, so we collapse them to spaces; otherwise an LLM verdict that
+# happens to contain a tab/backspace/etc. would emit malformed JSON to the
+# host and the hook payload would be silently dropped.
 _tp_escape() {
   local s="$1"
   s=${s//\\/\\\\}
   s=${s//\"/\\\"}
-  s=${s//$'\n'/ }
+  s=$(printf '%s' "$s" | LC_ALL=C tr '\000-\037' ' ')
   printf '%s' "$s"
 }
 
