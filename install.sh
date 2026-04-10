@@ -19,7 +19,7 @@ while [ $# -gt 0 ]; do
     --target)           TARGET="$2"; shift 2 ;;
     --with-claude-code) WITH_CC=1; shift ;;
     -h|--help)
-      sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *) printf 'unknown arg: %s\n' "$1" >&2; exit 2 ;;
