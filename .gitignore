@@ -1,0 +1,11 @@
+# task-proof transient run state — per-task spec/evidence/verdict artifacts
+/.task-proof/runs/
+
+# Editor / OS noise
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Local mock-LLM scratch
+/tests/.scratch/
