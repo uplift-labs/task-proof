@@ -154,18 +154,6 @@ The `--uninstall` flag removes only hooks whose `command` contains the
 `.task-proof/adapter/hooks/` marker. Other products' hooks are left
 untouched.
 
-## Related products
-
-- [`uplift-labs/safeguard`](https://github.com/uplift-labs/safeguard)
-  — destructive-shell guards (rm -rf protection, force-push asks, etc.)
-- [`uplift-labs/dev-discipline`](https://github.com/uplift-labs/dev-discipline)
-  — commit hygiene, regression gates, dead-branch detection
-- [`uplift-labs/reinforce`](https://github.com/uplift-labs/reinforce)
-  — session reflection and lesson-capture pipeline
-
-`task-proof` is the verification piece — it does not replace any of
-the above and runs alongside them happily.
-
 ## License
 
 [MIT](LICENSE).

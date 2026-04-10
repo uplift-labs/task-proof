@@ -1,0 +1,16 @@
+# Shell scripts and other Unix-consumed text files must always be
+# checked out with LF endings, regardless of host OS. Bash on
+# Linux/macOS breaks on CRLF (the \r ends up in command names and
+# argument parsing), and task-proof ships as a curl|bash installer —
+# so a Windows checkout accidentally committing CRLF is a hard break
+# for every downstream user.
+*.sh      text eol=lf
+*.py      text eol=lf
+*.json    text eol=lf
+*.md      text eol=lf
+*.tmpl    text eol=lf
+.gitignore      text eol=lf
+.gitattributes  text eol=lf
+.shellcheckrc   text eol=lf
+LICENSE         text eol=lf
+CONTRACT.md     text eol=lf
