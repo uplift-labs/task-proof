@@ -1,0 +1,8 @@
+{
+  "session_id":"test-fv-02",
+  "cwd":"{{TMPDIR}}",
+  "hook_event_name":"PreToolUse",
+  "transcript_path":"{{TMPDIR}}/transcript.jsonl",
+  "tool_name":"Bash",
+  "tool_input": {"command":"npm install express"}
+}

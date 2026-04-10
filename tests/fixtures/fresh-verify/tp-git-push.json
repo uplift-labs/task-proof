@@ -1,0 +1,8 @@
+{
+  "session_id":"test-fv-01",
+  "cwd":"{{TMPDIR}}",
+  "hook_event_name":"PreToolUse",
+  "transcript_path":"{{TMPDIR}}/transcript.jsonl",
+  "tool_name":"Bash",
+  "tool_input": {"command":"git push origin feature-branch"}
+}

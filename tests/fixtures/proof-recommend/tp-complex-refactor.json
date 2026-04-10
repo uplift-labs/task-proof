@@ -1,0 +1,6 @@
+{
+  "session_id": "test-pr-001",
+  "cwd": "{{TMPDIR}}",
+  "hook_event_name": "UserPromptSubmit",
+  "content": "Refactor the authentication system to support OAuth2, update the user model to store tokens, add refresh token rotation, write integration tests, and update the API documentation"
+}
