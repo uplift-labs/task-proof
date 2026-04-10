@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.task-proof/adapter/hooks/pre-bash.sh\"",
+            "timeout": 135000
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.task-proof/adapter/hooks/user-prompt-submit.sh\"",
+            "timeout": 5000
+          }
+        ]
+      }
+    ]
+  }
+}
