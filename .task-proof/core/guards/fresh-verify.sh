@@ -62,9 +62,14 @@ if [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ]; then
 fi
 [ -z "$TASK_DESCRIPTION" ] && TASK_DESCRIPTION="(no task description available — review the diff on its own merits)"
 
-# Truncate diff to fit context budget
-DIFF_TRUNCATED=$(printf '%s' "$DIFF" | head -200)
-if [ "$(printf '%s' "$DIFF" | wc -l)" -gt 200 ]; then
+# Truncate diff to fit context budget. Default 800 lines comfortably covers
+# most single-file rewrites; the original 200 was too tight - a routine
+# 185-line rewrite produces a ~350-line diff that the reviewer cannot see in
+# full and reflexively FAILs on. Override via FRESH_VERIFY_BUDGET_LINES for
+# even larger refactors, or to tighten on small projects.
+_BUDGET="${FRESH_VERIFY_BUDGET_LINES:-800}"
+DIFF_TRUNCATED=$(printf '%s' "$DIFF" | head -"$_BUDGET")
+if [ "$(printf '%s' "$DIFF" | wc -l)" -gt "$_BUDGET" ]; then
   DIFF_TRUNCATED="$DIFF_TRUNCATED
 ... (diff truncated, $(printf '%s' "$DIFF" | wc -l | tr -d ' ') total lines)"
 fi
