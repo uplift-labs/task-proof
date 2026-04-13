@@ -41,8 +41,15 @@ if [ -n "${TASK_PROOF_LLM_CMD:-}" ]; then
 fi
 
 # 2. claude -p in PATH (Claude Code Max subscription)
+# Env vars prevent the subprocess from re-entering the same hooks and
+# causing a fan-out process explosion when this runs inside an active
+# Claude Code session. SINGULARITY_NESTED is read by Singularity's
+# guard-multiplexer; TASK_PROOF_DISABLED and REINFORCE_DISABLED disable
+# those pipelines in the nested session.
 if command -v claude >/dev/null 2>&1; then
-  printf '%s' "$prompt" | claude -p --model "$MODEL" 2>/dev/null
+  printf '%s' "$prompt" | \
+    SINGULARITY_NESTED=1 TASK_PROOF_DISABLED=1 REINFORCE_DISABLED=1 \
+    claude -p --model "$MODEL" 2>/dev/null
   exit $?
 fi
 
