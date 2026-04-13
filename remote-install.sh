@@ -5,12 +5,12 @@
 #   bash <(curl -sSL https://raw.githubusercontent.com/uplift-labs/task-proof/main/remote-install.sh) [--with-claude-code]
 #
 # Clones the repo into a temp dir, runs install.sh, cleans up.
-# Set TASK_PROOF_VERSION to pin a specific tag (default: v0.1.0).
+# Set TASK_PROOF_VERSION to pin a specific tag (default: v0.1.1).
 
 set -u
 
 REPO_URL="https://github.com/uplift-labs/task-proof.git"
-VERSION="${TASK_PROOF_VERSION:-v0.1.0}"
+VERSION="${TASK_PROOF_VERSION:-v0.1.1}"
 TARGET="$(pwd)"
 PASSTHROUGH_ARGS=("--target" "$TARGET")
 
