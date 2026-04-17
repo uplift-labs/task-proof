@@ -2,10 +2,11 @@
 # remote-install.sh — fetch task-proof and install into the current repo.
 #
 # Usage:
-#   bash <(curl -sSL https://raw.githubusercontent.com/uplift-labs/task-proof/main/remote-install.sh) [--with-claude-code]
+#   bash <(curl -sSL https://raw.githubusercontent.com/uplift-labs/task-proof/main/remote-install.sh) [--prefix <dir>] [--with-claude-code]
 #
 # Clones the repo into a temp dir, runs install.sh, cleans up.
 # Set TASK_PROOF_VERSION to pin a specific tag (default: v0.1.1).
+# Default --prefix is .uplift (installs to <target>/.uplift/task-proof).
 
 set -u
 

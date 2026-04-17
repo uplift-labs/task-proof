@@ -2,7 +2,7 @@
 # install.sh — install task-proof into a target git repo.
 #
 # Usage:
-#   bash install.sh [--target <repo-dir>] [--with-claude-code]
+#   bash install.sh [--target <repo-dir>] [--prefix <dir>] [--with-claude-code]
 #
 # By default installs only the core multiplexer and guards. With --with-claude-code,
 # also installs the Claude Code adapter hooks, the task-proof skill, and merges
@@ -12,11 +12,13 @@ set -u
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TARGET=""
+PREFIX=".uplift"
 WITH_CC=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --target)           TARGET="$2"; shift 2 ;;
+    --prefix)           PREFIX="$2"; shift 2 ;;
     --with-claude-code) WITH_CC=1; shift ;;
     -h|--help)
       sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'
@@ -30,7 +32,18 @@ done
 # .git is a directory in normal repos, a file in worktrees
 [ -d "$TARGET/.git" ] || [ -f "$TARGET/.git" ] || { printf 'not a git repo: %s\n' "$TARGET" >&2; exit 1; }
 
-INSTALL_ROOT="$TARGET/.task-proof"
+# --- Migration from legacy path ---
+migrate_old_path() {
+  local old="$1" new="$2"
+  [ -d "$old" ] || return 0
+  [ -d "$new" ] && { printf '[migrate] both %s and %s exist — manual merge needed\n' "$old" "$new" >&2; return 1; }
+  mkdir -p "$(dirname "$new")"
+  mv "$old" "$new"
+  printf '[migrate] moved %s → %s\n' "$old" "$new"
+}
+
+INSTALL_ROOT="$TARGET/$PREFIX/task-proof"
+migrate_old_path "$TARGET/.task-proof" "$INSTALL_ROOT"
 mkdir -p "$INSTALL_ROOT/core/lib" "$INSTALL_ROOT/core/cmd" "$INSTALL_ROOT/core/guards"
 
 # sync_files <src_dir> <dest_dir> <glob> — mirror files matching glob from src into dest.
@@ -75,7 +88,12 @@ if [ "$WITH_CC" -eq 1 ]; then
     printf '[install] skill installed at %s\n' "$SKILL_DEST"
   fi
 
-  SNIPPET="$SCRIPT_DIR/adapters/claude-code/settings-hooks.json"
+  # Patch settings-hooks.json template for the actual PREFIX before merging.
+  _SRC_SNIPPET="$SCRIPT_DIR/adapters/claude-code/settings-hooks.json"
+  PATCHED_SNIPPET=$(mktemp)
+  sed "s|/\\.task-proof/adapter/hooks/|/$PREFIX/task-proof/adapter/hooks/|g" "$_SRC_SNIPPET" > "$PATCHED_SNIPPET"
+  trap 'rm -f "$PATCHED_SNIPPET"' EXIT
+
   SETTINGS="$TARGET/.claude/settings.json"
   mkdir -p "$TARGET/.claude"
 
@@ -85,11 +103,11 @@ if [ "$WITH_CC" -eq 1 ]; then
     exit 1
   fi
   printf '[install] merging hooks into %s\n' "$SETTINGS"
-  python3 "$MERGER" "$SETTINGS" "$SNIPPET"
+  python3 "$MERGER" "$SETTINGS" "$PATCHED_SNIPPET"
 fi
 
 printf '[install] done.\n'
 printf '  core installed at: %s\n' "$INSTALL_ROOT/core"
 [ "$WITH_CC" -eq 1 ] && printf '  claude-code adapter: %s\n' "$INSTALL_ROOT/adapter"
-printf '\n  Commit .task-proof/ (and .claude/settings.json + .claude/skills/task-proof/\n'
+printf '\n  Commit %s/ (and .claude/settings.json + .claude/skills/task-proof/\n' "$INSTALL_ROOT"
 printf '  if using Claude Code) so that the proof loop is available in worktrees.\n'
