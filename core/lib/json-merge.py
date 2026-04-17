@@ -11,7 +11,8 @@ import json
 import sys
 from pathlib import Path
 
-MARKER = ".task-proof/adapter/hooks/"
+MARKER = "/task-proof/adapter/hooks/"
+LEGACY_MARKERS = [".task-proof/adapter/hooks/"]
 
 
 def hook_key(hook):
@@ -25,7 +26,10 @@ def hook_key(hook):
 
 def is_task_proof_hook(hook):
     """Check if a hook was installed by task-proof."""
-    return MARKER in hook.get("command", "")
+    cmd = hook.get("command", "")
+    if MARKER in cmd:
+        return True
+    return any(m in cmd for m in LEGACY_MARKERS)
 
 
 def merge_matcher_group(existing_group, new_group):
