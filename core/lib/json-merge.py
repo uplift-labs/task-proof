@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""task-proof JSON merge tool.
+"""task-proof JSON hook merge tool.
 
-Merges hook definitions into an existing Claude Code settings.json.
+Merges hook definitions into an existing host JSON hook config.
 Idempotent: running twice produces the same result.
 
 Usage:
-    python3 json-merge.py <target_settings.json> <hooks_source.json> [--uninstall]
+    python3 json-merge.py <target_json> <hooks_source.json> [--uninstall]
 """
 import json
 import sys
@@ -35,9 +35,18 @@ def is_task_proof_hook(hook):
 def merge_matcher_group(existing_group, new_group):
     """Merge hooks within a matcher group, skipping duplicates."""
     existing_hooks = existing_group.get("hooks", [])
+    new_hooks = new_group.get("hooks", [])
+
+    # If this install provides task-proof hooks for the matcher, replace any
+    # older task-proof hooks in that matcher group. This handles path
+    # migrations such as .task-proof -> .uplift/task-proof while preserving
+    # unrelated products' hooks.
+    if any(is_task_proof_hook(h) for h in new_hooks):
+        existing_hooks = [h for h in existing_hooks if not is_task_proof_hook(h)]
+
     existing_keys = {hook_key(h): i for i, h in enumerate(existing_hooks)}
 
-    for hook in new_group.get("hooks", []):
+    for hook in new_hooks:
         key = hook_key(hook)
         if key in existing_keys:
             if is_task_proof_hook(hook):

@@ -5,9 +5,10 @@ products should not import from this file — they have their own.
 
 ## Architectural invariants
 
-- `core/` is host-agnostic. No reference to Claude Code, OpenCode, or
-  any other host. The only inputs are `stdin` JSON and env vars; the
-  only outputs are `BLOCK:` / `ASK:` / `WARN:` / empty on stdout.
+- `core/` is host-agnostic for hook protocols. No host-specific hook
+  JSON belongs there. The only guard inputs are `stdin` JSON and env
+  vars; the only guard outputs are `BLOCK:` / `ASK:` / `WARN:` / empty
+  on stdout. `core/lib/llm-client.sh` may know backend CLIs.
 - `adapters/<host>/` is the ONLY place host-specific JSON formats live.
   Adding a new host means adding a new directory under `adapters/`,
   never editing `core/`.
@@ -36,8 +37,8 @@ products should not import from this file — they have their own.
    `tests/fixtures/<guard-name>/`.
 4. Document it in `CONTRACT.md` with its tag semantics and env vars.
 5. If the host needs to wire it up differently, add an adapter hook
-   under `adapters/<host>/hooks/` and register it in
-   `adapters/<host>/settings-hooks.json`.
+   under `adapters/<host>/hooks/` and register it in that host's hook
+   config template.
 
 ## When you change the LLM client
 
@@ -51,22 +52,23 @@ products should not import from this file — they have their own.
 ## When you change the installer
 
 - `install.sh` must remain idempotent: running it twice on the same
-  target produces the same `.task-proof/`, `.claude/settings.json`,
-  and `.claude/skills/task-proof/` state.
+  target produces the same `.uplift/task-proof/`, host hook config, and
+  host skill directories (`.claude/`, `.codex/`, `.agents/`) state.
 - `core/lib/json-merge.py`'s `MARKER` constant identifies our hooks
   for both update and uninstall — leave it pointing at
-  `.task-proof/adapter/hooks/` and never touch entries that lack the
+  `/task-proof/adapter/hooks/` and never touch entries that lack the
   marker.
 - Verify `bash install.sh --target /tmp/<fresh-repo> --with-claude-code`
-  in a throwaway repo before committing installer changes.
+  or `--with-codex` in a throwaway repo before committing installer
+  changes.
 
 ## Dogfood
 
 This repo installs task-proof on itself (`bash install.sh --target $(pwd)
---with-claude-code`). The committed `.task-proof/` and `.claude/`
-directories are part of that dogfood. If you change anything under
-`core/`, `adapters/`, or `install.sh`, re-run the install and commit
-the regenerated artifacts in the same change.
+--with-claude-code --with-codex`). The committed `.uplift/`, `.claude/`,
+`.codex/`, and `.agents/` directories are part of that dogfood. If you
+change anything under `core/`, `adapters/`, or `install.sh`, re-run the
+install and commit the regenerated artifacts in the same change.
 
 ## Commits and tests
 

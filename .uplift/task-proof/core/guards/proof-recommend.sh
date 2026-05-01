@@ -14,8 +14,11 @@ INPUT=$(cat)
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$SCRIPT_DIR/../lib/json-field.sh"
 
-# Extract the user's message
-USER_MSG=$(json_field "content" "$INPUT")
+# Extract the user's message. Claude Code sends "content"; Codex sends
+# "prompt" for UserPromptSubmit. Both names are host payload fields, but the
+# guard only needs the user-facing text.
+USER_MSG=$(json_field_long "content" "$INPUT")
+[ -z "$USER_MSG" ] && USER_MSG=$(json_field_long "prompt" "$INPUT")
 [ -z "$USER_MSG" ] && exit 0
 
 # Skip short messages (confirmations: "yes", "ok", "go ahead")

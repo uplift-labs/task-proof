@@ -29,6 +29,11 @@ them directly.
 Priority: `BLOCK` > `ASK` > `WARN` > pass. On `BLOCK`, remaining guards
 in the group are short-circuited.
 
+Codex note: current Codex `PreToolUse` hooks can deny but do not support
+an interactive ask decision. The Codex adapter maps `ASK:` to deny by
+default. Set `TASK_PROOF_CODEX_ASK_BEHAVIOR=warn` to degrade `ASK:` to a
+non-blocking `systemMessage`.
+
 ## Command
 
 ### `task-proof-run`
@@ -52,7 +57,10 @@ task-proof-run.sh <group>
 | `TASK_PROOF_DISABLE_FRESH_VERIFY` | unset | Disable the fresh-verify guard |
 | `TASK_PROOF_DISABLE_PROOF_RECOMMEND` | unset | Disable the proof-recommend nudge |
 | `TASK_PROOF_LLM_CMD` | unset | Override the LLM backend (see below) |
+| `TASK_PROOF_LLM_BACKEND` | unset | Force `codex`, `claude`, or `anthropic` built-in backend |
 | `TASK_PROOF_MODEL` | `claude-haiku-4-5` | Model passed to backend when applicable |
+| `TASK_PROOF_CODEX_MODEL` | unset | Optional model override for `codex exec` |
+| `TASK_PROOF_CODEX_ASK_BEHAVIOR` | `block` | Codex adapter behavior for `ASK:`; set `warn` to avoid deny |
 | `TASK_PROOF_MAX_TOKENS` | `1024` | Max tokens for the API backend |
 | `ANTHROPIC_API_KEY` | unset | Fallback backend (curl to api.anthropic.com) |
 | `CI` | unset | Set to `true` to skip all guards (CI environments) |
@@ -84,8 +92,16 @@ printf '%s' "<prompt>" | bash core/lib/llm-client.sh  # prompt on stdin
 1. `TASK_PROOF_LLM_CMD` env override — the value is `eval`'d with the
    prompt piped to its stdin. Use this to plug in any LLM (ollama,
    vLLM, openai CLI, etc.) or to mock the backend in tests.
-2. `claude` CLI in `$PATH` — Claude Code Max subscription, no API key.
-3. `ANTHROPIC_API_KEY` env — direct `curl` call to api.anthropic.com.
+2. `TASK_PROOF_LLM_BACKEND` when set to `codex`, `claude`, or
+   `anthropic`.
+3. `codex exec` in `$PATH` when running inside a Codex session. Nested
+   verifier runs use `--ephemeral`, read-only sandboxing, and
+   `features.codex_hooks=false` to avoid hook recursion.
+4. `claude` CLI in `$PATH` — Claude Code Max subscription, no API key.
+5. `codex exec` in `$PATH` outside Codex, after `claude` for
+   compatibility with existing Claude Code users who also have Codex
+   installed.
+6. `ANTHROPIC_API_KEY` env — direct `curl` call to api.anthropic.com.
    Requires `curl` and `jq`.
 
 ## Guards
@@ -115,7 +131,8 @@ keyed by `session_id` so the same session never sees the nudge twice.
 ## Skill Protocol (high level)
 
 The `task-proof` skill runs a 7-step proof loop. Full instructions live
-in [`adapters/claude-code/skills/task-proof/SKILL.md`](adapters/claude-code/skills/task-proof/SKILL.md).
+under `adapters/<host>/skills/task-proof/SKILL.md` for hosts that ship a
+native skill package.
 
 1. **Spec freeze** — write `.task-proof/runs/<TASK_ID>/spec.md` with
    numbered acceptance criteria, get user confirmation, treat as
@@ -127,7 +144,8 @@ in [`adapters/claude-code/skills/task-proof/SKILL.md`](adapters/claude-code/skil
    the verdict to `.task-proof/runs/<TASK_ID>/verdict.json`.
 5. **Fix loop** — up to 3 iterations of (re-evidence → re-verify →
    targeted fix). Escalate to user after the third failure.
-6. **Complete** — report verdict, commit remaining work.
+6. **Complete** — report verdict and commit only when appropriate for
+   the host workflow.
 7. **Self-improve** — reflect on spec quality, evidence quality,
    iteration count, ceremony overhead; tweak the skill if useful.
 

@@ -104,6 +104,18 @@ for guard_dir in "$ROOT/tests/fixtures/"*/; do
   done
 done
 
+if [ -f "$ROOT/tests/test-adapter-codex.sh" ]; then
+  bash "$ROOT/tests/test-adapter-codex.sh" || fail=1
+fi
+
+if [ -f "$ROOT/tests/test-llm-client-codex.sh" ]; then
+  bash "$ROOT/tests/test-llm-client-codex.sh" || fail=1
+fi
+
+if [ -f "$ROOT/tests/test-install-codex.sh" ]; then
+  bash "$ROOT/tests/test-install-codex.sh" || fail=1
+fi
+
 if [ "$fail" -eq 0 ]; then
   echo "all fixtures passed"
 else
