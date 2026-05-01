@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$(git rev-parse --show-toplevel)/.uplift/task-proof/adapter/hooks/codex-pre-tool-use.sh\"",
+            "timeout": 135,
+            "statusMessage": "Running task-proof fresh verification"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$(git rev-parse --show-toplevel)/.uplift/task-proof/adapter/hooks/codex-user-prompt-submit.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

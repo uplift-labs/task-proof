@@ -20,7 +20,7 @@ Structured proof loop for complex, multi-file tasks: freeze spec → build → e
 
 ## Instructions
 
-All artifacts go to `.task-proof/runs/<TASK_ID>/` (gitignored, transient).
+All artifacts go to `.task-proof/runs/<TASK_ID>/` (gitignored, transient). The installed task-proof code normally lives under `.uplift/task-proof`.
 
 Generate `<TASK_ID>` as `YYYY-MM-DD-<short-slug>` (e.g., `2026-04-10-auth-refactor`).
 
@@ -68,7 +68,8 @@ For each criterion: run the relevant check (test, lint, manual inspection) and r
 Spawn an independent verifier with no shared context using the LLM client shipped with task-proof:
 
 ```bash
-bash .task-proof/core/lib/llm-client.sh "$(cat <<EOF
+TASK_PROOF_ROOT="${TASK_PROOF_ROOT:-$(git rev-parse --show-toplevel)/.uplift/task-proof}"
+bash "$TASK_PROOF_ROOT/core/lib/llm-client.sh" "$(cat <<EOF
 You are an independent verifier. You receive acceptance criteria and evidence.
 For each criterion, run actual commands to verify independently. Do NOT trust the evidence at face value.
 
@@ -83,7 +84,7 @@ EOF
 )" > .task-proof/runs/<TASK_ID>/verdict.json
 ```
 
-`llm-client.sh` picks a backend automatically (`TASK_PROOF_LLM_CMD` override → `claude -p` → `ANTHROPIC_API_KEY` curl), so the proof loop is portable across hosts.
+`llm-client.sh` picks a backend automatically (`TASK_PROOF_LLM_CMD` override → Codex when running in Codex → `claude -p` → Codex CLI fallback → `ANTHROPIC_API_KEY` curl), so the proof loop is portable across hosts.
 
 If any criterion is FAIL or UNKNOWN, write `.task-proof/runs/<TASK_ID>/problems.md` summarizing issues.
 
