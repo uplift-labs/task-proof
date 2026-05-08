@@ -36,10 +36,10 @@ products should not import from this file; they have their own.
 This repo installs task-proof on itself:
 
 ```bash
-bash install.sh --target "$(pwd)" --with-claude-code --with-codex
+bash install.sh --target "$(pwd)" --with-claude-code --with-codex --with-opencode
 ```
 
-The committed `.uplift/`, `.claude/`, `.codex/`, and `.agents/`
+The committed `.uplift/`, `.claude/`, `.codex/`, `.agents/`, and `.opencode/`
 directories are part of that dogfood. If you change `core/`,
 `adapters/`, or `install.sh`, re-run the install and commit regenerated
 artifacts in the same change.

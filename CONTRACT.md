@@ -17,6 +17,17 @@ them directly.
 - **Skill artifacts** live under `.task-proof/runs/<TASK_ID>/` and are
   managed by the skill, not by the CLI multiplexer.
 
+Adapters may pass a normalized host-neutral envelope instead of raw host
+JSON when the host does not expose Claude/Codex-style fields:
+
+| Field | Meaning |
+|-------|---------|
+| `session_id` | Stable session id used for once-per-session nudges |
+| `cwd` | Repository/worktree directory for the tool call |
+| `command` | Shell command to classify for `pre-commit` |
+| `task_description` | Last user task prompt for fresh verification context |
+| `prompt` | User prompt text for `prompt-recommend` |
+
 ## Output Tags
 
 | Tag | Meaning | Host action |
@@ -33,6 +44,11 @@ Codex note: current Codex `PreToolUse` hooks can deny but do not support
 an interactive ask decision. The Codex adapter maps `ASK:` to deny by
 default. Set `TASK_PROOF_CODEX_ASK_BEHAVIOR=warn` to degrade `ASK:` to a
 non-blocking `systemMessage`.
+
+OpenCode note: current server `tool.execute.before` hooks can block by
+throwing, but do not expose a direct native permission prompt. The
+OpenCode adapter maps `ASK:` to block by default. Set
+`TASK_PROOF_OPENCODE_ASK_BEHAVIOR=warn` to log and allow instead.
 
 ## Command
 
@@ -57,10 +73,14 @@ task-proof-run.sh <group>
 | `TASK_PROOF_DISABLE_FRESH_VERIFY` | unset | Disable the fresh-verify guard |
 | `TASK_PROOF_DISABLE_PROOF_RECOMMEND` | unset | Disable the proof-recommend nudge |
 | `TASK_PROOF_LLM_CMD` | unset | Override the LLM backend (see below) |
-| `TASK_PROOF_LLM_BACKEND` | unset | Force `codex`, `claude`, or `anthropic` built-in backend |
+| `TASK_PROOF_LLM_BACKEND` | unset | Force `codex`, `claude`, `opencode`, or `anthropic` built-in backend |
 | `TASK_PROOF_MODEL` | `claude-haiku-4-5` | Model passed to backend when applicable |
 | `TASK_PROOF_CODEX_MODEL` | unset | Optional model override for `codex exec` |
 | `TASK_PROOF_CODEX_ASK_BEHAVIOR` | `block` | Codex adapter behavior for `ASK:`; set `warn` to avoid deny |
+| `TASK_PROOF_OPENCODE_MODEL` | unset | Optional model override for `opencode run` |
+| `TASK_PROOF_OPENCODE_ASK_BEHAVIOR` | `block` | OpenCode adapter behavior for `ASK:`; set `warn` to avoid throw |
+| `TASK_PROOF_OPENCODE_PROMPT_TIMEOUT_MS` | `5000` | OpenCode prompt nudge adapter timeout |
+| `TASK_PROOF_OPENCODE_TOOL_TIMEOUT_MS` | `140000` | OpenCode tool guard adapter timeout |
 | `TASK_PROOF_MAX_TOKENS` | `1024` | Max tokens for the API backend |
 | `ANTHROPIC_API_KEY` | unset | Fallback backend (curl to api.anthropic.com) |
 | `CI` | unset | Set to `true` to skip all guards (CI environments) |
@@ -92,17 +112,18 @@ printf '%s' "<prompt>" | bash core/lib/llm-client.sh  # prompt on stdin
 1. `TASK_PROOF_LLM_CMD` env override — the value is `eval`'d with the
    prompt piped to its stdin. Use this to plug in any LLM (ollama,
    vLLM, openai CLI, etc.) or to mock the backend in tests.
-2. `TASK_PROOF_LLM_BACKEND` when set to `codex`, `claude`, or
-   `anthropic`.
+2. `TASK_PROOF_LLM_BACKEND` when set to `codex`, `claude`, `opencode`,
+   or `anthropic`.
 3. `codex exec` in `$PATH` when running inside a Codex session. Nested
-   verifier runs use `--ephemeral`, read-only sandboxing, and
-   `features.codex_hooks=false` to avoid hook recursion.
+    verifier runs use `--ephemeral`, read-only sandboxing, and
+    `features.codex_hooks=false` to avoid hook recursion.
 4. `claude` CLI in `$PATH` — Claude Code Max subscription, no API key.
 5. `codex exec` in `$PATH` outside Codex, after `claude` for
-   compatibility with existing Claude Code users who also have Codex
-   installed.
-6. `ANTHROPIC_API_KEY` env — direct `curl` call to api.anthropic.com.
-   Requires `curl` and `jq`.
+    compatibility with existing Claude Code users who also have Codex
+    installed.
+6. `opencode run` in `$PATH`, using `--pure` to avoid plugin recursion.
+7. `ANTHROPIC_API_KEY` env — direct `curl` call to api.anthropic.com.
+    Requires `curl` and `jq`.
 
 ## Guards
 

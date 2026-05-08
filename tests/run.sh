@@ -108,12 +108,24 @@ if [ -f "$ROOT/tests/test-adapter-codex.sh" ]; then
   bash "$ROOT/tests/test-adapter-codex.sh" || fail=1
 fi
 
+if [ -f "$ROOT/tests/test-adapter-opencode.sh" ]; then
+  bash "$ROOT/tests/test-adapter-opencode.sh" || fail=1
+fi
+
 if [ -f "$ROOT/tests/test-llm-client-codex.sh" ]; then
   bash "$ROOT/tests/test-llm-client-codex.sh" || fail=1
 fi
 
+if [ -f "$ROOT/tests/test-llm-client-opencode.sh" ]; then
+  bash "$ROOT/tests/test-llm-client-opencode.sh" || fail=1
+fi
+
 if [ -f "$ROOT/tests/test-install-codex.sh" ]; then
   bash "$ROOT/tests/test-install-codex.sh" || fail=1
+fi
+
+if [ -f "$ROOT/tests/test-install-opencode.sh" ]; then
+  bash "$ROOT/tests/test-install-opencode.sh" || fail=1
 fi
 
 if [ "$fail" -eq 0 ]; then

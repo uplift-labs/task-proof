@@ -57,10 +57,24 @@ Commit `.uplift/task-proof/`, `.codex/`, and
 `.agents/skills/task-proof/`. Codex loads project `.codex/` config only
 for trusted projects.
 
-### Both hosts
+### OpenCode
 
 ```bash
-bash <(curl -sSL https://raw.githubusercontent.com/uplift-labs/task-proof/main/remote-install.sh) --with-claude-code --with-codex
+bash <(curl -sSL https://raw.githubusercontent.com/uplift-labs/task-proof/main/remote-install.sh) --with-opencode
+```
+
+That installs the core under `.uplift/task-proof/`, installs a
+project-local OpenCode plugin under `.opencode/plugins/`, and installs
+the repo-scoped skill under `.opencode/skills/task-proof/`.
+
+Commit `.uplift/task-proof/` and `.opencode/` so the proof loop is
+available in worktrees. OpenCode auto-loads project plugins from
+`.opencode/plugins/` unless it is started with `--pure`.
+
+### All supported hosts
+
+```bash
+bash <(curl -sSL https://raw.githubusercontent.com/uplift-labs/task-proof/main/remote-install.sh) --with-claude-code --with-codex --with-opencode
 ```
 
 ### Core only
@@ -77,10 +91,11 @@ following the [public CLI contract](CONTRACT.md).
 ## How it works
 
 ```
-Claude Code / Codex hook event
+Claude Code / Codex / OpenCode hook event
         │
         ▼
-.uplift/task-proof/adapter/hooks/<host-hook>.sh    ← host adapter (JSON ↔ tags)
+.uplift/task-proof/adapter/hooks/*.sh or .opencode/plugins/task-proof.js
+        │                                      ← host adapter (JSON ↔ tags)
         │
         ▼
 .uplift/task-proof/core/cmd/task-proof-run.sh pre-commit  ← multiplexer
@@ -92,7 +107,7 @@ Claude Code / Codex hook event
 .uplift/task-proof/core/lib/llm-client.sh           ← backend abstraction
         │
         ▼
-TASK_PROOF_LLM_CMD → Codex-session codex exec → claude -p → codex exec → ANTHROPIC_API_KEY
+TASK_PROOF_LLM_CMD → Codex-session codex exec → claude -p → codex exec → opencode run → ANTHROPIC_API_KEY
 ```
 
 Two layers, on purpose:
@@ -100,7 +115,7 @@ Two layers, on purpose:
 - **`core/`** is host-agnostic and speaks plain text tags
   (`BLOCK:` / `ASK:` / `WARN:` / empty). Runs anywhere.
 - **`adapters/<host>/`** translates those tags to the host's hook
-  protocol. Today: Claude Code and Codex. Future: OpenCode, GitHub
+  protocol. Today: Claude Code, Codex, and OpenCode. Future: GitHub
   Actions, pre-commit, anything with a hook surface.
 
 Runtime proof artifacts are separate from installed code and live under
@@ -116,8 +131,9 @@ for the full list. The most useful ones:
 | `TASK_PROOF_DISABLED=1` | Kill switch for the whole product |
 | `TASK_PROOF_DISABLE_FRESH_VERIFY=1` | Disable just the verifier |
 | `TASK_PROOF_LLM_CMD=...` | Plug in any LLM (ollama, vLLM, openai CLI, mock) |
-| `TASK_PROOF_LLM_BACKEND=codex/claude/anthropic` | Force one built-in backend |
+| `TASK_PROOF_LLM_BACKEND=codex/claude/opencode/anthropic` | Force one built-in backend |
 | `TASK_PROOF_CODEX_ASK_BEHAVIOR=warn` | Let Codex degrade `ASK:` to a warning instead of a block |
+| `TASK_PROOF_OPENCODE_ASK_BEHAVIOR=warn` | Let OpenCode degrade `ASK:` to a warning log instead of a throw |
 | `ANTHROPIC_API_KEY=...` | Fallback when `claude` CLI is not available |
 | `CI=true` | Skip everything in CI environments |
 
@@ -147,15 +163,18 @@ task-proof/
 ├── core/
 │   ├── cmd/task-proof-run.sh        ← public CLI entry point
 │   ├── guards/{fresh-verify,proof-recommend}.sh
-│   └── lib/{json-merge.py,json-field.sh,llm-client.sh}
+│   └── lib/{json-merge.py,json-field.sh,llm-client.sh,codex-config.py}
 ├── adapters/
 │   ├── claude-code/
 │   │   ├── settings-hooks.json
 │   │   ├── hooks/{pre-bash,user-prompt-submit}.sh
 │   │   └── skills/task-proof/SKILL.md
-│   └── codex/
-│       ├── hooks.json
-│       ├── hooks/{codex-pre-tool-use,codex-user-prompt-submit}.sh
+│   ├── codex/
+│   │   ├── hooks.json
+│   │   ├── hooks/{codex-pre-tool-use,codex-user-prompt-submit}.sh
+│   │   └── skills/task-proof/SKILL.md
+│   └── opencode/
+│       ├── plugins/task-proof.js
 │       └── skills/task-proof/SKILL.md
 ├── templates/{spec.md.tmpl,gitignore.snippet}
 ├── tests/{run.sh,fixtures/...}
@@ -172,7 +191,7 @@ bash tests/run.sh
 
 Sets up a throwaway git repo, mocks the LLM backend with
 `TASK_PROOF_LLM_CMD`, runs every fixture under `tests/fixtures/`, and
-checks the Codex adapter, Codex LLM backend selection, and Codex
+checks the Codex and OpenCode adapters, LLM backend selection, and
 installer idempotency. True-positive fixtures (`tp-*.json`) must produce
 non-empty output; true-negative fixtures (`tn-*.json`) must stay silent.
 
@@ -181,13 +200,16 @@ non-empty output; true-negative fixtures (`tn-*.json`) must stay silent.
 ```bash
 python3 .uplift/task-proof/core/lib/json-merge.py .claude/settings.json /dev/null --uninstall
 python3 .uplift/task-proof/core/lib/json-merge.py .codex/hooks.json /dev/null --uninstall
-rm -rf .uplift/task-proof .claude/skills/task-proof .agents/skills/task-proof
+rm -rf .uplift/task-proof .claude/skills/task-proof .agents/skills/task-proof .opencode/plugins/task-proof.js .opencode/skills/task-proof
 ```
 
 The `--uninstall` flag removes only hooks whose `command` contains the
 `/task-proof/adapter/hooks/` marker. Other products' hooks are left
 untouched. If no other Codex hooks use it, you can also remove
 `codex_hooks = true` from `.codex/config.toml`.
+
+OpenCode auto-loads `.opencode/plugins/*.js`; uninstalling the plugin
+file is enough unless you added explicit OpenCode config yourself.
 
 ## License
 

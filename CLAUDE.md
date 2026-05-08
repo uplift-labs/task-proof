@@ -53,20 +53,20 @@ products should not import from this file — they have their own.
 
 - `install.sh` must remain idempotent: running it twice on the same
   target produces the same `.uplift/task-proof/`, host hook config, and
-  host skill directories (`.claude/`, `.codex/`, `.agents/`) state.
+  host skill directories (`.claude/`, `.codex/`, `.agents/`, `.opencode/`) state.
 - `core/lib/json-merge.py`'s `MARKER` constant identifies our hooks
   for both update and uninstall — leave it pointing at
   `/task-proof/adapter/hooks/` and never touch entries that lack the
   marker.
-- Verify `bash install.sh --target /tmp/<fresh-repo> --with-claude-code`
-  or `--with-codex` in a throwaway repo before committing installer
+- Verify `bash install.sh --target /tmp/<fresh-repo> --with-claude-code`,
+  `--with-codex`, or `--with-opencode` in a throwaway repo before committing installer
   changes.
 
 ## Dogfood
 
 This repo installs task-proof on itself (`bash install.sh --target $(pwd)
---with-claude-code --with-codex`). The committed `.uplift/`, `.claude/`,
-`.codex/`, and `.agents/` directories are part of that dogfood. If you
+--with-claude-code --with-codex --with-opencode`). The committed `.uplift/`, `.claude/`,
+`.codex/`, `.agents/`, and `.opencode/` directories are part of that dogfood. If you
 change anything under `core/`, `adapters/`, or `install.sh`, re-run the
 install and commit the regenerated artifacts in the same change.
 

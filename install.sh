@@ -2,12 +2,13 @@
 # install.sh — install task-proof into a target git repo.
 #
 # Usage:
-#   bash install.sh [--target <repo-dir>] [--prefix <dir>] [--with-claude-code] [--with-codex]
+#   bash install.sh [--target <repo-dir>] [--prefix <dir>] [--with-claude-code] [--with-codex] [--with-opencode]
 #
 # By default installs only the core multiplexer and guards. With --with-claude-code,
 # also installs the Claude Code adapter hooks, the task-proof skill, and merges
 # hook config into .claude/settings.json. With --with-codex, installs Codex
-# hooks, a repo-scoped Codex skill, and project .codex hook config.
+# hooks, a repo-scoped Codex skill, and project .codex hook config. With
+# --with-opencode, installs a project-local OpenCode plugin and skill.
 
 set -u
 
@@ -16,6 +17,7 @@ TARGET=""
 PREFIX=".uplift"
 WITH_CC=0
 WITH_CODEX=0
+WITH_OPENCODE=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -23,8 +25,9 @@ while [ $# -gt 0 ]; do
     --prefix)           PREFIX="$2"; shift 2 ;;
     --with-claude-code) WITH_CC=1; shift ;;
     --with-codex)       WITH_CODEX=1; shift ;;
+    --with-opencode)    WITH_OPENCODE=1; shift ;;
     -h|--help)
-      sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *) printf 'unknown arg: %s\n' "$1" >&2; exit 2 ;;
@@ -169,9 +172,33 @@ if [ "$WITH_CODEX" -eq 1 ]; then
   python3 "$CODEX_CONFIG_PATCHER" "$CODEX_CONFIG" --enable-hooks
 fi
 
+if [ "$WITH_OPENCODE" -eq 1 ]; then
+  OPENCODE_DIR="$TARGET/.opencode"
+  OPENCODE_PLUGIN_DIR="$OPENCODE_DIR/plugins"
+  mkdir -p "$OPENCODE_PLUGIN_DIR"
+  OPENCODE_GITIGNORE="$OPENCODE_DIR/.gitignore"
+  if [ ! -e "$OPENCODE_GITIGNORE" ]; then
+    printf 'node_modules/\npackage.json\npackage-lock.json\nbun.lock\n' > "$OPENCODE_GITIGNORE"
+  fi
+  printf '[install] copying OpenCode plugin to %s\n' "$OPENCODE_PLUGIN_DIR"
+  copy_files "$SCRIPT_DIR/adapters/opencode/plugins" "$OPENCODE_PLUGIN_DIR" "*.js"
+
+  # Install the task-proof skill into OpenCode's repo-scoped skill location.
+  SKILL_SRC="$SCRIPT_DIR/adapters/opencode/skills/task-proof"
+  SKILL_DEST="$OPENCODE_DIR/skills/task-proof"
+  if [ -d "$SKILL_SRC" ]; then
+    mkdir -p "$SKILL_DEST"
+    cp "$SKILL_SRC"/*.md "$SKILL_DEST/" 2>/dev/null || {
+      printf '[install] WARNING: OpenCode skill copy from %s failed\n' "$SKILL_SRC" >&2
+    }
+    printf '[install] OpenCode skill installed at %s\n' "$SKILL_DEST"
+  fi
+fi
+
 printf '[install] done.\n'
 printf '  core installed at: %s\n' "$INSTALL_ROOT/core"
 [ "$WITH_CC" -eq 1 ] && printf '  claude-code adapter: %s\n' "$INSTALL_ROOT/adapter"
 [ "$WITH_CODEX" -eq 1 ] && printf '  codex adapter: %s\n' "$INSTALL_ROOT/adapter"
+[ "$WITH_OPENCODE" -eq 1 ] && printf '  opencode plugin: %s\n' "$TARGET/.opencode/plugins"
 printf '\n  Commit %s/ and any host config/skill directories created\n' "$INSTALL_ROOT"
-printf '  (.claude/, .codex/, .agents/) so that the proof loop is available in worktrees.\n'
+printf '  (.claude/, .codex/, .agents/, .opencode/) so that the proof loop is available in worktrees.\n'

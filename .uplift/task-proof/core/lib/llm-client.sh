@@ -16,18 +16,21 @@
 #                                 or to mock the backend in tests.
 #   2. codex exec in $PATH    — Codex CLI, preferred inside Codex sessions
 #   3. claude -p in $PATH     — Claude Code CLI (Max subscription, no API key)
-#   4. ANTHROPIC_API_KEY      — direct call to api.anthropic.com via curl
+#   4. opencode run in $PATH  — OpenCode CLI, plugin-pure nested verifier
+#   5. ANTHROPIC_API_KEY      — direct call to api.anthropic.com via curl
 #
 # Optional config:
 #   TASK_PROOF_MODEL          — default "claude-haiku-4-5" (fast, cheap)
-#   TASK_PROOF_LLM_BACKEND    — force "codex", "claude", or "anthropic"
+#   TASK_PROOF_LLM_BACKEND    — force "codex", "claude", "opencode", or "anthropic"
 #   TASK_PROOF_CODEX_MODEL    — optional model override for codex exec
+#   TASK_PROOF_OPENCODE_MODEL — optional model override for opencode run
 #   TASK_PROOF_MAX_TOKENS     — default 1024
 
 set -u
 
 MODEL="${TASK_PROOF_MODEL:-claude-haiku-4-5}"
 CODEX_MODEL="${TASK_PROOF_CODEX_MODEL:-}"
+OPENCODE_MODEL="${TASK_PROOF_OPENCODE_MODEL:-}"
 MAX_TOKENS="${TASK_PROOF_MAX_TOKENS:-1024}"
 
 if [ $# -ge 1 ]; then
@@ -72,6 +75,29 @@ run_claude_backend() {
     claude -p --model "$MODEL" 2>/dev/null
 }
 
+run_opencode_backend() {
+  if ! command -v opencode >/dev/null 2>&1; then
+    printf 'llm-client: opencode backend requested but opencode CLI is not available\n' >&2
+    return 1
+  fi
+
+  local prompt_file
+  prompt_file=$(mktemp) || return 2
+  printf '%s' "$prompt" > "$prompt_file" || { rm -f "$prompt_file"; return 2; }
+
+  # shellcheck disable=SC2206
+  local args=(run --pure --file "$prompt_file")
+  if [ -n "$OPENCODE_MODEL" ]; then
+    args+=(--model "$OPENCODE_MODEL")
+  fi
+
+  SINGULARITY_NESTED=1 TASK_PROOF_DISABLED=1 REINFORCE_DISABLED=1 \
+    opencode "${args[@]}" "Read the attached prompt file and answer exactly as requested." 2>/dev/null
+  local status=$?
+  rm -f "$prompt_file"
+  return "$status"
+}
+
 FORCE_ANTHROPIC=0
 case "${TASK_PROOF_LLM_BACKEND:-}" in
   codex)
@@ -80,6 +106,10 @@ case "${TASK_PROOF_LLM_BACKEND:-}" in
     ;;
   claude)
     run_claude_backend
+    exit $?
+    ;;
+  opencode)
+    run_opencode_backend
     exit $?
     ;;
   anthropic)
@@ -116,7 +146,13 @@ if [ "$FORCE_ANTHROPIC" -ne 1 ] && command -v codex >/dev/null 2>&1; then
   exit $?
 fi
 
-# 5. Anthropic API via curl (requires ANTHROPIC_API_KEY and jq)
+# 5. opencode run in PATH, after claude/codex for compatibility.
+if [ "$FORCE_ANTHROPIC" -ne 1 ] && command -v opencode >/dev/null 2>&1; then
+  run_opencode_backend
+  exit $?
+fi
+
+# 6. Anthropic API via curl (requires ANTHROPIC_API_KEY and jq)
 if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
   if ! command -v curl >/dev/null 2>&1 || ! command -v jq >/dev/null 2>&1; then
     printf 'llm-client: ANTHROPIC_API_KEY backend requires curl and jq\n' >&2
@@ -153,5 +189,5 @@ if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
   exit 0
 fi
 
-printf 'llm-client: no LLM backend available — set TASK_PROOF_LLM_CMD, install codex/claude CLI, or export ANTHROPIC_API_KEY\n' >&2
+printf 'llm-client: no LLM backend available — set TASK_PROOF_LLM_CMD, install codex/claude/opencode CLI, or export ANTHROPIC_API_KEY\n' >&2
 exit 1

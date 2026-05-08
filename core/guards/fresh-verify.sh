@@ -4,7 +4,7 @@
 # staged changes before push/commit. Closes the self-certification gap:
 # the agent that wrote the code physically cannot judge it cleanly.
 #
-# Input:  JSON tool payload on stdin (Claude Code-style PreToolUse Bash)
+# Input:  JSON tool payload on stdin (host adapter may pass normalized fields)
 # Output: BLOCK:<reason> | ASK:<reason> | empty (allow)
 # Exit:   0 always (fail-open)
 
@@ -54,11 +54,12 @@ fi
 CHANGE_LINES=$(printf '%s' "$DIFF" | grep -c '^[+-][^+-]' 2>/dev/null || echo 0)
 [ "${CHANGE_LINES:-0}" -lt 3 ] && exit 0
 
-# Extract last user prompt from transcript for task context
+# Extract task context. Host adapters may provide a normalized
+# task_description; legacy Claude/Codex payloads fall back to transcript_path.
+TASK_DESCRIPTION=$(json_field_long "task_description" "$INPUT")
 TRANSCRIPT=$(json_field "transcript_path" "$INPUT")
-TASK_DESCRIPTION=""
 if [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ]; then
-  TASK_DESCRIPTION=$(grep -o '"type":"human"[^}]*"content":"[^"]*"' "$TRANSCRIPT" 2>/dev/null | tail -1 | sed 's/.*"content":"//;s/"$//' | head -c 500)
+  [ -z "$TASK_DESCRIPTION" ] && TASK_DESCRIPTION=$(grep -o '"type":"human"[^}]*"content":"[^"]*"' "$TRANSCRIPT" 2>/dev/null | tail -1 | sed 's/.*"content":"//;s/"$//' | head -c 500)
 fi
 [ -z "$TASK_DESCRIPTION" ] && TASK_DESCRIPTION="(no task description available — review the diff on its own merits)"
 
