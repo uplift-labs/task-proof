@@ -33,9 +33,6 @@ git $GIT_AUTHOR -C "$TMP_REPO" commit -q -m baseline
 printf 'alpha\nbeta\ngamma\ndelta\nepsilon\nzeta\neta\n' > "$TMP_REPO/sample.txt"
 git -C "$TMP_REPO" add sample.txt
 
-# Empty transcript for fresh-verify task-description extraction
-: > "$TMP_REPO/transcript.jsonl"
-
 map_group() {
   case "$1" in
     fresh-verify)    echo "pre-commit" ;;
@@ -104,24 +101,12 @@ for guard_dir in "$ROOT/tests/fixtures/"*/; do
   done
 done
 
-if [ -f "$ROOT/tests/test-adapter-codex.sh" ]; then
-  bash "$ROOT/tests/test-adapter-codex.sh" || fail=1
-fi
-
 if [ -f "$ROOT/tests/test-adapter-opencode.sh" ]; then
   bash "$ROOT/tests/test-adapter-opencode.sh" || fail=1
 fi
 
-if [ -f "$ROOT/tests/test-llm-client-codex.sh" ]; then
-  bash "$ROOT/tests/test-llm-client-codex.sh" || fail=1
-fi
-
 if [ -f "$ROOT/tests/test-llm-client-opencode.sh" ]; then
   bash "$ROOT/tests/test-llm-client-opencode.sh" || fail=1
-fi
-
-if [ -f "$ROOT/tests/test-install-codex.sh" ]; then
-  bash "$ROOT/tests/test-install-codex.sh" || fail=1
 fi
 
 if [ -f "$ROOT/tests/test-install-opencode.sh" ]; then

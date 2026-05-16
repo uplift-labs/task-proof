@@ -2,5 +2,5 @@
   "session_id": "test-pr-002",
   "cwd": "{{TMPDIR}}",
   "hook_event_name": "UserPromptSubmit",
-  "content": "Yes go ahead"
+  "prompt": "Yes go ahead"
 }

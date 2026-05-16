@@ -2,7 +2,8 @@
   "session_id":"test-fv-01",
   "cwd":"{{TMPDIR}}",
   "hook_event_name":"PreToolUse",
-  "transcript_path":"{{TMPDIR}}/transcript.jsonl",
-  "tool_name":"Bash",
+  "tool_name":"bash",
+  "command":"git push origin feature-branch",
+  "task_description":"Update task-proof and verify the staged diff",
   "tool_input": {"command":"git push origin feature-branch"}
 }

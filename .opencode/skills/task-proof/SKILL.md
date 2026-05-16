@@ -90,7 +90,7 @@ EOF
 )" > .task-proof/runs/<TASK_ID>/verdict.json
 ```
 
-`llm-client.sh` selects `TASK_PROOF_LLM_CMD`, forced backend overrides, Codex-in-Codex, Claude, Codex, OpenCode, then API fallback. OpenCode nested runs use `opencode run --pure` to avoid plugin recursion.
+`llm-client.sh` selects `TASK_PROOF_LLM_CMD` first, then the OpenCode backend. OpenCode nested runs use `opencode run --pure` to avoid plugin recursion.
 
 If any criterion is `FAIL` or `UNKNOWN`, write `.task-proof/runs/<TASK_ID>/problems.md`.
 

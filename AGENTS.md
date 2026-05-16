@@ -9,9 +9,8 @@ products should not import from this file; they have their own.
   JSON belongs there. The only guard inputs are stdin JSON and env vars;
   the only guard outputs are `BLOCK:` / `ASK:` / `WARN:` / empty.
   `core/lib/llm-client.sh` may know backend CLIs.
-- `adapters/<host>/` is the only place host-specific JSON formats live.
-  Adding a new host means adding a new directory under `adapters/`, not
-  editing `core/`.
+- `adapters/opencode/` is the only supported host integration. Keep
+  host-specific OpenCode plugin behavior there, not in `core/`.
 - `core/cmd/task-proof-run.sh` is the single public CLI entry point.
   Anything under `core/guards/` and `core/lib/` is internal unless
   `CONTRACT.md` says otherwise.
@@ -22,12 +21,12 @@ products should not import from this file; they have their own.
 
 - Guard changes need true-positive and true-negative fixtures under
   `tests/fixtures/<guard>/`.
-- Host adapter changes need focused tests, such as
-  `tests/test-adapter-codex.sh`.
+- OpenCode adapter changes need focused tests, such as
+  `tests/test-adapter-opencode.sh`.
 - LLM backend changes need deterministic tests with mocked commands.
 - Installer changes must stay idempotent. Running `install.sh` twice on
-  the same target must leave `.uplift/task-proof/`, host hook config,
-  and host skill directories unchanged.
+  the same target must leave `.uplift/task-proof/` and `.opencode/`
+  unchanged.
 - Update `CONTRACT.md` when tag vocabulary, env vars, backend selection,
   or dispatch groups change.
 
@@ -36,13 +35,12 @@ products should not import from this file; they have their own.
 This repo installs task-proof on itself:
 
 ```bash
-bash install.sh --target "$(pwd)" --with-claude-code --with-codex --with-opencode
+bash install.sh --target "$(pwd)"
 ```
 
-The committed `.uplift/`, `.claude/`, `.codex/`, `.agents/`, and `.opencode/`
-directories are part of that dogfood. If you change `core/`,
-`adapters/`, or `install.sh`, re-run the install and commit regenerated
-artifacts in the same change.
+The committed `.uplift/` and `.opencode/` directories are part of that
+dogfood. If you change `core/`, `adapters/`, or `install.sh`, re-run the
+install and commit regenerated artifacts in the same change.
 
 ## Tests
 

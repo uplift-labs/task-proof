@@ -1,23 +1,25 @@
 #!/bin/bash
-# Installer smoke test for --with-opencode.
+# Installer smoke test for OpenCode-only installs.
 
 set -u
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TMP_REPO=$(mktemp -d)
-TMP_BOTH=$(mktemp -d)
-trap 'rm -rf "$TMP_REPO" "$TMP_BOTH"' EXIT
+trap 'rm -rf "$TMP_REPO"' EXIT
 
 git init -q "$TMP_REPO"
 mkdir -p "$TMP_REPO/.opencode/plugins"
+mkdir -p "$TMP_REPO/.uplift/task-proof/adapter/hooks" "$TMP_REPO/.uplift/task-proof/core/lib"
 printf 'export default { id: "other", server: async () => ({}) }\n' > "$TMP_REPO/.opencode/plugins/other.js"
 printf '{"permission":{"bash":"ask"}}\n' > "$TMP_REPO/opencode.json"
+printf 'old hook\n' > "$TMP_REPO/.uplift/task-proof/adapter/hooks/old.sh"
+printf 'old helper\n' > "$TMP_REPO/.uplift/task-proof/core/lib/old.py"
 
 fail=0
 echo "[install-opencode]"
 
-bash "$ROOT/install.sh" --target "$TMP_REPO" --with-opencode >/dev/null || {
-  echo "  FAIL  install --with-opencode"
+bash "$ROOT/install.sh" --target "$TMP_REPO" >/dev/null || {
+  echo "  FAIL  install"
   exit 1
 }
 
@@ -49,10 +51,17 @@ else
   fail=1
 fi
 
+if [ ! -e "$TMP_REPO/.uplift/task-proof/adapter" ] && [ ! -e "$TMP_REPO/.uplift/task-proof/core/lib/old.py" ]; then
+  echo "  PASS  stale non-OpenCode install files removed"
+else
+  echo "  FAIL  stale non-OpenCode install files remained"
+  fail=1
+fi
+
 first_plugin=$(cat "$TMP_REPO/.opencode/plugins/task-proof.js")
 first_skill=$(cat "$TMP_REPO/.opencode/skills/task-proof/SKILL.md")
-bash "$ROOT/install.sh" --target "$TMP_REPO" --with-opencode >/dev/null || {
-  echo "  FAIL  repeated install --with-opencode"
+bash "$ROOT/install.sh" --target "$TMP_REPO" >/dev/null || {
+  echo "  FAIL  repeated install"
   exit 1
 }
 second_plugin=$(cat "$TMP_REPO/.opencode/plugins/task-proof.js")
@@ -64,26 +73,5 @@ else
   echo "  FAIL  install changed OpenCode files on second run"
   fail=1
 fi
-
-git init -q "$TMP_BOTH"
-bash "$ROOT/install.sh" --target "$TMP_BOTH" --with-claude-code --with-codex --with-opencode >/dev/null || {
-  echo "  FAIL  install all hosts"
-  exit 1
-}
-
-for path in \
-  "$TMP_BOTH/.uplift/task-proof/adapter/hooks/pre-bash.sh" \
-  "$TMP_BOTH/.uplift/task-proof/adapter/hooks/user-prompt-submit.sh" \
-  "$TMP_BOTH/.uplift/task-proof/adapter/hooks/codex-pre-tool-use.sh" \
-  "$TMP_BOTH/.uplift/task-proof/adapter/hooks/codex-user-prompt-submit.sh" \
-  "$TMP_BOTH/.opencode/plugins/task-proof.js"
-do
-  if [ -e "$path" ]; then
-    echo "  PASS  all-host install kept ${path#$TMP_BOTH/}"
-  else
-    echo "  FAIL  all-host install missing ${path#$TMP_BOTH/}"
-    fail=1
-  fi
-done
 
 exit "$fail"

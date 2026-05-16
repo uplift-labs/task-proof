@@ -15,7 +15,7 @@ INPUT=$(cat)
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$SCRIPT_DIR/../lib/json-field.sh"
 
-# Extract command from tool_input
+# Extract command from the normalized hook payload.
 CMD=$(json_field "command" "$INPUT")
 [ -z "$CMD" ] && exit 0
 
@@ -33,7 +33,7 @@ case "$CMD" in
   *--wip*|*WIP*|*wip:*|*"wip "*) exit 0 ;;
 esac
 
-# Resolve git repo locally — no singularity env vars assumed
+# Resolve git repo locally; no host-specific env vars assumed.
 GIT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
 [ -z "$GIT_ROOT" ] && exit 0
 
@@ -54,13 +54,8 @@ fi
 CHANGE_LINES=$(printf '%s' "$DIFF" | grep -c '^[+-][^+-]' 2>/dev/null || echo 0)
 [ "${CHANGE_LINES:-0}" -lt 3 ] && exit 0
 
-# Extract task context. Host adapters may provide a normalized
-# task_description; legacy Claude/Codex payloads fall back to transcript_path.
+# Extract task context from the normalized OpenCode adapter payload.
 TASK_DESCRIPTION=$(json_field_long "task_description" "$INPUT")
-TRANSCRIPT=$(json_field "transcript_path" "$INPUT")
-if [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ]; then
-  [ -z "$TASK_DESCRIPTION" ] && TASK_DESCRIPTION=$(grep -o '"type":"human"[^}]*"content":"[^"]*"' "$TRANSCRIPT" 2>/dev/null | tail -1 | sed 's/.*"content":"//;s/"$//' | head -c 500)
-fi
 [ -z "$TASK_DESCRIPTION" ] && TASK_DESCRIPTION="(no task description available — review the diff on its own merits)"
 
 # Truncate diff to fit context budget. Default 800 lines comfortably covers
