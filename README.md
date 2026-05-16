@@ -4,7 +4,7 @@
 > self-certification gap by spawning a fresh LLM session that has never
 > seen the build context.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: MIT](LICENSE)](LICENSE)
 
 ## The Problem
 
@@ -22,8 +22,17 @@ A `proof-recommend` nudge fires once per session to suggest the skill when the u
 
 ## Quickstart
 
+`task-proof` is now pure TypeScript. Install from a checkout with Node.js and `tsx`:
+
 ```bash
-bash <(curl -sSL https://raw.githubusercontent.com/uplift-labs/task-proof/main/remote-install.sh)
+npm install
+npx tsx install.ts --target /path/to/your/repo
+```
+
+For this repo's dogfood install:
+
+```bash
+npm run install:local
 ```
 
 That installs the core under `.uplift/task-proof/`, installs the project-local OpenCode plugin under `.opencode/plugins/`, and installs the repo-scoped skill under `.opencode/skills/task-proof/`.
@@ -36,16 +45,16 @@ Commit `.uplift/task-proof/` and `.opencode/` so the proof loop is available in 
 OpenCode hook event
         |
         v
-.opencode/plugins/task-proof.js              <- OpenCode adapter
+.opencode/plugins/task-proof.ts              <- OpenCode adapter
         |
         v
-.uplift/task-proof/core/cmd/task-proof-run.sh pre-commit
+.uplift/task-proof/core/cmd/task-proof-run.ts pre-commit
         |
         v
-.uplift/task-proof/core/guards/fresh-verify.sh
+.uplift/task-proof/core/guards/fresh-verify.ts
         |
         v
-.uplift/task-proof/core/lib/llm-client.sh
+.uplift/task-proof/core/lib/llm-client.ts
         |
         v
 TASK_PROOF_LLM_CMD -> opencode run --pure
@@ -92,17 +101,18 @@ Once installed, invoke `task-proof` with a task description. The skill walks the
 ```text
 task-proof/
 |-- core/
-|   |-- cmd/task-proof-run.sh
-|   |-- guards/{fresh-verify,proof-recommend}.sh
-|   `-- lib/{json-field.sh,llm-client.sh}
+|   |-- cmd/task-proof-run.ts
+|   |-- guards/{fresh-verify,proof-recommend}.ts
+|   `-- lib/{decision,llm-client,payload,process}.ts
 |-- adapters/
 |   `-- opencode/
-|       |-- plugins/task-proof.js
+|       |-- plugins/task-proof.ts
 |       `-- skills/task-proof/SKILL.md
 |-- templates/{spec.md.tmpl,gitignore.snippet}
-|-- tests/{run.sh,fixtures/...}
-|-- install.sh
-|-- remote-install.sh
+|-- tests/{run.ts,fixtures/...}
+|-- install.ts
+|-- remote-install.ts
+|-- package.json
 `-- CONTRACT.md
 ```
 
@@ -111,20 +121,21 @@ The committed `.uplift/` and `.opencode/` directories are dogfood output for thi
 ## Tests
 
 ```bash
-bash tests/run.sh
+npm run check
+npm test
 ```
 
-The test runner sets up a throwaway git repo, mocks the LLM backend with `TASK_PROOF_LLM_CMD`, runs every fixture under `tests/fixtures/`, and checks the OpenCode adapter, OpenCode LLM backend selection, and installer idempotency.
+The test runner sets up a throwaway git repo, mocks the LLM backend with `TASK_PROOF_LLM_CMD`, runs every fixture under `tests/fixtures/`, and checks the OpenCode adapter, OpenCode LLM backend selection, installer idempotency, and the absence of legacy Bash/JS source files.
 
 True-positive fixtures (`tp-*.json`) must produce non-empty output; true-negative fixtures (`tn-*.json`) must stay silent.
 
 ## Uninstall
 
 ```bash
-rm -rf .uplift/task-proof .opencode/plugins/task-proof.js .opencode/skills/task-proof
+rm -rf .uplift/task-proof .opencode/plugins/task-proof.ts .opencode/skills/task-proof
 ```
 
-OpenCode auto-loads `.opencode/plugins/*.js`; uninstalling the plugin file is enough unless you added explicit OpenCode config yourself.
+OpenCode auto-loads `.opencode/plugins/*.{ts,js}`; uninstalling the plugin file is enough unless you added explicit OpenCode config yourself.
 
 ## License
 

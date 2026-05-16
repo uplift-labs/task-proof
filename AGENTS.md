@@ -8,23 +8,22 @@ products should not import from this file; they have their own.
 - `core/` is host-agnostic for hook protocols. No host-specific hook
   JSON belongs there. The only guard inputs are stdin JSON and env vars;
   the only guard outputs are `BLOCK:` / `ASK:` / `WARN:` / empty.
-  `core/lib/llm-client.sh` may know backend CLIs.
+  `core/lib/llm-client.ts` may know backend CLIs.
 - `adapters/opencode/` is the only supported host integration. Keep
   host-specific OpenCode plugin behavior there, not in `core/`.
-- `core/cmd/task-proof-run.sh` is the single public CLI entry point.
+- `core/cmd/task-proof-run.ts` is the single public CLI entry point.
   Anything under `core/guards/` and `core/lib/` is internal unless
   `CONTRACT.md` says otherwise.
-- All guards exit `0`. task-proof is a fail-open safety net; a buggy
-  guard must never block real work.
+- The public CLI always exits `0`. task-proof is a fail-open safety net;
+  a buggy guard must never block real work.
 
 ## Change rules
 
 - Guard changes need true-positive and true-negative fixtures under
   `tests/fixtures/<guard>/`.
-- OpenCode adapter changes need focused tests, such as
-  `tests/test-adapter-opencode.sh`.
+- OpenCode adapter changes need focused coverage in `tests/run.ts`.
 - LLM backend changes need deterministic tests with mocked commands.
-- Installer changes must stay idempotent. Running `install.sh` twice on
+- Installer changes must stay idempotent. Running `npx tsx install.ts` twice on
   the same target must leave `.uplift/task-proof/` and `.opencode/`
   unchanged.
 - Update `CONTRACT.md` when tag vocabulary, env vars, backend selection,
@@ -35,11 +34,11 @@ products should not import from this file; they have their own.
 This repo installs task-proof on itself:
 
 ```bash
-bash install.sh --target "$(pwd)"
+npm run install:local
 ```
 
 The committed `.uplift/` and `.opencode/` directories are part of that
-dogfood. If you change `core/`, `adapters/`, or `install.sh`, re-run the
+dogfood. If you change `core/`, `adapters/`, or `install.ts`, re-run the
 install and commit regenerated artifacts in the same change.
 
 ## Tests
@@ -47,17 +46,13 @@ install and commit regenerated artifacts in the same change.
 Run:
 
 ```bash
-bash tests/run.sh
+npm test
 ```
 
-On Windows, use Git Bash if plain `bash` is blocked by the sandbox:
-
-```powershell
-& 'C:\Program Files\Git\bin\bash.exe' tests/run.sh
-```
+Run `npm run check` for TypeScript type checking.
 
 ## Reinforcement
 
-`core/` stays host-agnostic. Adapters translate. Guards always exit 0.
-The single public entry point is `core/cmd/task-proof-run.sh`. Surface
+`core/` stays host-agnostic. Adapters translate. The CLI always exits 0.
+The single public entry point is `core/cmd/task-proof-run.ts`. Surface
 backend failures honestly.

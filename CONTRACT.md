@@ -1,15 +1,22 @@
 # Public CLI Contract
 
-`core/cmd/task-proof-run.sh` is the single stable public entry point.
-Scripts under `core/guards/` and `core/lib/` are internal and may change
-without notice. Pin to a `task-proof` release tag if you script against
-them directly.
+`core/cmd/task-proof-run.ts` is the single stable public CLI entry point.
+Run it with `tsx`:
+
+```bash
+npx tsx core/cmd/task-proof-run.ts <group>
+```
+
+TypeScript modules under `core/guards/` and `core/lib/` are internal unless
+this contract says otherwise. Pin to a `task-proof` release tag if you script
+against internal modules directly.
 
 ## Conventions
 
+- **Runtime:** Node.js plus `tsx` for direct TypeScript execution.
 - **Input:** JSON on stdin from the OpenCode adapter.
 - **Output:** tagged plain text on stdout.
-- **Exit codes:** always `0`. task-proof is a fail-open safety net; errors in guards are swallowed, never propagated, so a buggy guard can never block real work.
+- **Exit codes:** `task-proof-run.ts` always exits `0`. task-proof is a fail-open safety net; errors in guards are swallowed, never propagated, so a buggy guard can never block real work.
 - **No state files** except `${TMPDIR:-/tmp}/task-proof-recommend-<session_id>` for the proof-recommend session marker.
 - **Skill artifacts** live under `.task-proof/runs/<TASK_ID>/` and are managed by the skill, not by the CLI multiplexer.
 
@@ -43,7 +50,7 @@ OpenCode server `tool.execute.before` hooks can block by throwing, but do not ex
 Run a group of guards against a single adapter invocation.
 
 ```bash
-task-proof-run.sh <group>
+npx tsx core/cmd/task-proof-run.ts <group>
 ```
 
 | Group | Guards | Hook event |
@@ -58,7 +65,7 @@ task-proof-run.sh <group>
 | `TASK_PROOF_DISABLED` | unset | Set to `1` to disable all guards |
 | `TASK_PROOF_DISABLE_FRESH_VERIFY` | unset | Disable the fresh-verify guard |
 | `TASK_PROOF_DISABLE_PROOF_RECOMMEND` | unset | Disable the proof-recommend nudge |
-| `TASK_PROOF_LLM_CMD` | unset | Override the LLM backend command |
+| `TASK_PROOF_LLM_CMD` | unset | Override the LLM backend command; prompt is piped to stdin and the command string is executed through the platform shell |
 | `TASK_PROOF_LLM_BACKEND` | unset | Force the `opencode` built-in backend |
 | `TASK_PROOF_OPENCODE_MODEL` | unset | Optional model override for `opencode run` |
 | `TASK_PROOF_OPENCODE_ASK_BEHAVIOR` | `block` | OpenCode adapter behavior for `ASK:`; set `warn` to log and allow |
@@ -68,11 +75,11 @@ task-proof-run.sh <group>
 
 ## LLM Client Contract
 
-`core/lib/llm-client.sh` is a helper used by `fresh-verify` and the skill.
+`core/lib/llm-client.ts` is the programmatic helper used by `fresh-verify` and the skill. `core/lib/llm-client.cli.ts` is the CLI wrapper.
 
 ```bash
-bash core/lib/llm-client.sh "<prompt>"
-printf '%s' "<prompt>" | bash core/lib/llm-client.sh
+npx tsx core/lib/llm-client.cli.ts "<prompt>"
+printf '%s' "<prompt>" | npx tsx core/lib/llm-client.cli.ts
 ```
 
 **Input:** A single prompt string.
@@ -85,11 +92,13 @@ printf '%s' "<prompt>" | bash core/lib/llm-client.sh
 |------|---------|
 | `0` | Success; non-empty model reply on stdout |
 | `1` | No backend available, unknown backend, or empty prompt |
-| `2` | Backend invoked but errored; message on stderr |
+| `2` | Built-in backend invoked but errored; message on stderr |
+
+`TASK_PROOF_LLM_CMD` preserves the override contract by returning the custom command's exit code.
 
 **Backend selection** (first match wins):
 
-1. `TASK_PROOF_LLM_CMD` env override. The value is `eval`'d with the prompt piped to stdin, which supports custom LLM commands and deterministic test mocks.
+1. `TASK_PROOF_LLM_CMD` env override. The value is executed through the platform shell with the prompt piped to stdin, which supports custom LLM commands and deterministic test mocks.
 2. `TASK_PROOF_LLM_BACKEND=opencode` when set.
 3. `opencode run --pure` in `$PATH`, using `--pure` to avoid plugin recursion.
 
@@ -97,7 +106,7 @@ printf '%s' "<prompt>" | bash core/lib/llm-client.sh
 
 ### fresh-verify
 
-Spawns a fresh LLM session through `llm-client.sh` to independently review staged changes before `git push` or `git commit`. The reviewer sees only the user's last task description and the diff.
+Spawns a fresh LLM session through `llm-client.ts` to independently review staged changes before `git push` or `git commit`. The reviewer sees only the user's last task description and the diff.
 
 - **BLOCK:** reviewer returned `FAIL: <reason>`
 - **ASK:** reviewer returned `CONCERN: <note>`
@@ -118,7 +127,7 @@ The `task-proof` skill runs a 7-step proof loop. Full instructions live under `a
 1. **Spec freeze** - write `.task-proof/runs/<TASK_ID>/spec.md` with numbered acceptance criteria, get user confirmation, treat as immutable thereafter.
 2. **Build** - implement normally with existing repo patterns.
 3. **Evidence pack** - write `.task-proof/runs/<TASK_ID>/evidence.json` recording PASS/FAIL/UNKNOWN plus actual proof for each criterion.
-4. **Fresh verify** - call `llm-client.sh` with spec and evidence, save the verdict to `.task-proof/runs/<TASK_ID>/verdict.json`.
+4. **Fresh verify** - call `llm-client.cli.ts` with spec and evidence, save the verdict to `.task-proof/runs/<TASK_ID>/verdict.json`.
 5. **Fix loop** - up to three iterations of re-evidence, re-verify, targeted fix.
 6. **Complete** - report verdict and residual risk.
 7. **Self-improve** - reflect on spec quality, evidence quality, iteration count, and ceremony overhead.
@@ -128,6 +137,6 @@ The `task-proof` skill runs a 7-step proof loop. Full instructions live under `a
 Within a major version (`v0.x`):
 
 - The output tag vocabulary (`BLOCK:`, `ASK:`, `WARN:`, empty) will not change shape.
-- The `task-proof-run.sh <group>` group names will not be removed, though new groups may be added.
-- `llm-client.sh` argument and exit-code conventions will not change.
+- The `task-proof-run.ts <group>` group names will not be removed, though new groups may be added.
+- `llm-client.cli.ts` argument and exit-code conventions will not change.
 - Skill artifact paths (`.task-proof/runs/<TASK_ID>/{spec.md,evidence.json,verdict.json,problems.md}`) will not change without a migration note.

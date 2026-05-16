@@ -75,7 +75,7 @@ Run an independent verifier through task-proof's LLM client:
 
 ```bash
 TASK_PROOF_ROOT="${TASK_PROOF_ROOT:-$(git rev-parse --show-toplevel)/.uplift/task-proof}"
-bash "$TASK_PROOF_ROOT/core/lib/llm-client.sh" "$(cat <<EOF
+npx tsx "$TASK_PROOF_ROOT/core/lib/llm-client.cli.ts" "$(cat <<EOF
 You are an independent verifier. You receive acceptance criteria and evidence.
 For each criterion, verify independently. Do NOT trust the evidence at face value.
 
@@ -90,7 +90,7 @@ EOF
 )" > .task-proof/runs/<TASK_ID>/verdict.json
 ```
 
-`llm-client.sh` selects `TASK_PROOF_LLM_CMD` first, then the OpenCode backend. OpenCode nested runs use `opencode run --pure` to avoid plugin recursion.
+`llm-client.cli.ts` selects `TASK_PROOF_LLM_CMD` first, then the OpenCode backend. OpenCode nested runs use `opencode run --pure` to avoid plugin recursion.
 
 If any criterion is `FAIL` or `UNKNOWN`, write `.task-proof/runs/<TASK_ID>/problems.md`.
 
